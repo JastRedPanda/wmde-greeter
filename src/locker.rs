@@ -39,7 +39,7 @@ use crate::fl;
 fn lockfile_opt() -> Option<PathBuf> {
     let runtime_dir = dirs::runtime_dir()?;
     let session_id = env::var("XDG_SESSION_ID").ok()?;
-    Some(runtime_dir.join(format!("cosmic-greeter-{}.lock", session_id)))
+    Some(runtime_dir.join(format!("wmde-greeter-{}.lock", session_id)))
 }
 
 pub fn main(user: pwd::Passwd) -> Result<(), Box<dyn std::error::Error>> {
@@ -127,7 +127,7 @@ pub fn pam_thread(username: String, conversation: Conversation) -> Result<(), pa
     //TODO: send errors to GUI, restart process
 
     // Create PAM context
-    let mut context = pam_client::Context::new("cosmic-greeter", Some(&username), conversation)?;
+    let mut context = pam_client::Context::new("wmde-greeter", Some(&username), conversation)?;
 
     // Authenticate the user (ask for password, 2nd-factor token, fingerprint, etc.)
     tracing::info!("authenticate");
@@ -649,7 +649,7 @@ impl cosmic::Application for App {
     type Message = Message;
 
     /// The unique application ID to supply to the window manager.
-    const APP_ID: &'static str = "com.system76.CosmicGreeter";
+    const APP_ID: &'static str = "fun.wmde.Greeter";
 
     fn core(&self) -> &Core {
         &self.common.core
@@ -1206,7 +1206,7 @@ impl cosmic::Application for App {
         subscriptions.push(
             cosmic_config::config_subscription(
                 TypeId::of::<TimeAppletSubscription>(),
-                "com.system76.CosmicAppletTime".into(),
+                "fun.wmde.AppletTime".into(),
                 TimeAppletConfig::VERSION,
             )
             .map(|res| {

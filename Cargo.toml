@@ -1,7 +1,16 @@
 [package]
-name = "cosmic-greeter"
+name = "wmde-greeter"
 version = "0.1.0"
 edition = "2024"
+
+# The PACKAGE is renamed (the binary and the i18n domain follow it: justfile takes the
+# binary as target/release/<name>, and fluent_language_loader! derives the .ftl name from
+# CARGO_PKG_NAME, hence i18n/*/wmde_greeter.ftl). The LIBRARY target keeps its upstream
+# name so `use cosmic_greeter::...` in src/main.rs and examples/ needs no edit and upstream
+# merges stay cheap - same reasoning as keeping the cosmic:: imports elsewhere in the stack.
+[lib]
+name = "cosmic_greeter"
+path = "src/lib.rs"
 
 [build-dependencies]
 vergen = { version = "8", features = ["git", "gitcl"] }
@@ -17,7 +26,7 @@ cosmic-bg-config.workspace = true
 cosmic-comp-config.workspace = true
 cosmic-config = { workspace = true, features = ["calloop", "macro"] }
 cosmic-greeter-config.workspace = true
-cosmic-greeter-daemon = { path = "daemon" }
+cosmic-greeter-daemon = { package = "wmde-greeter-daemon", path = "daemon" }
 dirs = "6"
 libcosmic = { workspace = true, features = [
     "autosize",
@@ -130,8 +139,14 @@ cosmic-randr-shell = { git = "https://github.com/pop-os/cosmic-randr", default-f
 git = "https://github.com/pop-os/cosmic-applets"
 default-features = false
 
+# wmde-bg renamed its config crate to `wmde-bg-config` (it ships the fun.wmde.Background
+# id); alias it back to the `cosmic-bg-config` dependency key so every `cosmic_bg_config::`
+# import keeps resolving. This has to be a direct path dep rather than a [patch] entry -
+# [patch] cannot rename a package, so the patch is silently ignored and the greeter ends up
+# reading the upstream com.system76 background namespace.
 [workspace.dependencies.cosmic-bg-config]
-git = "https://github.com/pop-os/cosmic-bg"
+package = "wmde-bg-config"
+path = "../wmde-bg/config"
 default-features = false
 
 [workspace.dependencies.cosmic-comp-config]
@@ -158,6 +173,58 @@ features = ["advanced-shaping"]
 [patch."https://github.com/pop-os/cosmic-protocols"]
 cctk = { git = "https://github.com/pop-os/cosmic-protocols//", package = "cosmic-client-toolkit", rev = "32283d7" }
 cosmic-protocols = { git = "https://github.com/pop-os/cosmic-protocols//", rev = "32283d7" }
+
+# WMDE forks (local sibling paths). libcosmic carries the wmde config-root + fun.wmde.*
+# theme/toolkit ids; the sibling forks carry the renamed cross-component config ids this
+# binary reads (comp config, wallpapers, applet clock format, randr, the greeter
+# accessibility handoff). All three URL spellings, because the crates in the graph declare
+# the same source with and without a trailing slash or .git - miss one and two different
+# libcosmic end up in the graph.
+[patch."https://github.com/pop-os/libcosmic"]
+libcosmic = { path = "../libcosmic" }
+cosmic-config = { path = "../libcosmic/cosmic-config" }
+cosmic-config-derive = { path = "../libcosmic/cosmic-config-derive" }
+cosmic-theme = { path = "../libcosmic/cosmic-theme" }
+iced = { path = "../libcosmic/iced" }
+iced_accessibility = { path = "../libcosmic/iced/accessibility" }
+iced_core = { path = "../libcosmic/iced/core" }
+iced_debug = { path = "../libcosmic/iced/debug" }
+iced_futures = { path = "../libcosmic/iced/futures" }
+iced_graphics = { path = "../libcosmic/iced/graphics" }
+iced_program = { path = "../libcosmic/iced/program" }
+iced_renderer = { path = "../libcosmic/iced/renderer" }
+iced_runtime = { path = "../libcosmic/iced/runtime" }
+iced_tiny_skia = { path = "../libcosmic/iced/tiny_skia" }
+iced_wgpu = { path = "../libcosmic/iced/wgpu" }
+iced_widget = { path = "../libcosmic/iced/widget" }
+iced_winit = { path = "../libcosmic/iced/winit" }
+
+[patch."https://github.com/pop-os/cosmic-comp"]
+cosmic-comp-config = { path = "../wmde-comp/cosmic-comp-config" }
+
+[patch."https://github.com/pop-os/cosmic-applets"]
+cosmic-applets-config = { path = "../wmde-applets/cosmic-applets-config" }
+
+[patch."https://github.com/pop-os/cosmic-settings-daemon"]
+cosmic-settings-daemon-config = { path = "../wmde-settings-daemon/cosmic-settings-daemon-config" }
+
+[patch."https://github.com/pop-os/cosmic-settings"]
+cosmic-settings-accessibility-subscription = { path = "../wmde-settings/subscriptions/accessibility" }
+cosmic-settings-a11y-manager-subscription = { path = "../wmde-settings/subscriptions/a11y-manager" }
+
+[patch."https://github.com/pop-os/cosmic-randr"]
+cosmic-randr-shell = { path = "../wmde-randr/shell" }
+
+[patch."https://github.com/pop-os/cosmic-randr/"]
+cosmic-randr-shell = { path = "../wmde-randr/shell" }
+
+# Standard freedesktop/system service bindings - identical to pop-os, redirected for
+# source purity.
+[patch."https://github.com/pop-os/dbus-settings-bindings"]
+cosmic-dbus-a11y = { path = "../wmde-dbus-settings-bindings/a11y" }
+cosmic-dbus-networkmanager = { path = "../wmde-dbus-settings-bindings/networkmanager" }
+upower_dbus = { path = "../wmde-dbus-settings-bindings/upower" }
+timedate-zbus = { path = "../wmde-dbus-settings-bindings/timedate" }
 
 # [patch."https://github.com/pop-os/libcosmic"]
 # iced_core = { git = "https://github.com/pop-os/libcosmic//", branch = "theme-v2" }

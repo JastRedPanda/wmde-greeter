@@ -1,0 +1,3 @@
+#Type Name           ID GECOS                    Home directory           Shell
+u     wmde-greeter -  "WMDE Greeter Account" /var/lib/wmde-greeter  -
+m     wmde-greeter video

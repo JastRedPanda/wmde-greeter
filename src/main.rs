@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             Some("--version") | Some("-v") => {
                 println!(
-                    "cosmic-greeter {} (git commit {})",
+                    "wmde-greeter {} (git commit {})",
                     env!("CARGO_PKG_VERSION"),
                     env!("VERGEN_GIT_SHA")
                 );
@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match pwd::Passwd::current_user() {
         Some(current_user) => match current_user.name.as_str() {
-            "cosmic-greeter" => greeter::main(),
+            "wmde-greeter" => greeter::main(),
             _ => locker::main(current_user),
         },
         _ => Err("failed to determine current user".into()),
@@ -39,16 +39,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn print_help(version: &str, git_rev: &str) {
     println!(
-        r#"cosmic-greeter {version} (git commit {git_rev})
-System76 <info@system76.com>
+        r#"wmde-greeter {version} (git commit {git_rev})
+WMDE <https://wmde.fun>
 
-Designed for the COSMIC™ desktop environment, cosmic-greeter is a libcosmic
-frontend for greetd which can be run inside of cosmic-comp.
+Designed for the WMDE desktop environment, wmde-greeter is a libcosmic
+frontend for greetd which can be run inside of wmde-comp.
 
-Project home page: https://github.com/pop-os/cosmic-greeter
+Project home page: https://github.com/Lin-WMDE/wmde-greeter
 
 Options:
   -h, --help     Show this message
-  -v, --version  Show the version of cosmic-greeter"#
+  -v, --version  Show the version of wmde-greeter"#
     );
 }

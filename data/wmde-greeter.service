@@ -1,0 +1,23 @@
+[Unit]
+Description=WMDE Greeter
+After=systemd-user-sessions.service plymouth-quit-wait.service wmde-greeter-daemon.service
+After=getty@tty1.service
+Conflicts=getty@tty1.service
+Wants=wmde-greeter-daemon.service
+
+[Service]
+Type=simple
+ExecStart=greetd --config /etc/greetd/wmde-greeter.toml
+IgnoreSIGPIPE=no
+SendSIGHUP=yes
+TimeoutStopSec=30s
+KeyringMode=shared
+Restart=always
+RestartSec=1
+StartLimitBurst=5
+StartLimitInterval=30
+
+# Enabling this unit makes it THE display manager: the alias is a symlink at
+# /etc/systemd/system/display-manager.service, and systemd refuses a second one.
+[Install]
+Alias=display-manager.service

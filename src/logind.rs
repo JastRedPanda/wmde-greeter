@@ -54,8 +54,8 @@ pub async fn suspend() -> zbus::Result<()> {
 
 async fn inhibit(manager: &ManagerProxy<'_>) -> zbus::Result<OwnedFd> {
     let what = InhibitType::Sleep;
-    let who = "COSMIC Greeter";
-    let why = "COSMIC Greeter needs to display a lock screen";
+    let who = "WMDE Greeter";
+    let why = "WMDE Greeter needs to display a lock screen";
     let mode = "delay";
     //TODO: update logind-zbus to fix inhibit signature
     let fd: zbus::zvariant::OwnedFd = manager

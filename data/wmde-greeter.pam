@@ -1,0 +1,14 @@
+#%PAM-1.0
+# PAM stack for BOTH roles of the wmde-greeter binary:
+#  - the greeter authenticating a user at login (named in data/wmde-greeter.toml),
+#  - the locker re-authenticating the owner of a locked session (src/locker.rs).
+#
+# Upstream ships a Debian stack (@include common-auth) that has no meaning here, and
+# the Arch cosmic-greeter package sidesteps the question by pointing greetd at the
+# `login` service - which leaves the LOCKER naming a service that does not exist, so
+# PAM falls through to `other` and no password is ever accepted. Hence our own file,
+# built on system-auth, the stack every Arch screen locker uses.
+auth       include   system-auth
+account    include   system-auth
+password   include   system-auth
+session    include   system-auth

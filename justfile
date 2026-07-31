@@ -1,10 +1,12 @@
-name := 'cosmic-greeter'
-export APPID := 'com.system76.CosmicGreeter'
+name := 'wmde-greeter'
+export APPID := 'fun.wmde.Greeter'
 
 rootdir := ''
 prefix := '/usr'
+sysconfdir := '/etc'
 
 base-dir := absolute_path(clean(rootdir / prefix))
+etc-dir := absolute_path(clean(rootdir / sysconfdir))
 
 export INSTALL_DIR := base-dir / 'share'
 
@@ -15,12 +17,26 @@ bin-dst := base-dir / 'bin' / name
 # Systemd sysusers/tmpfiles components directories
 lib-dir := base-dir / 'lib'
 
+# WMDE keeps its packaging data in data/; upstream reads these two out of debian/,
+# which was dropped along with the rest of the Debian packaging.
 # sysusers.d
-sysusers-src := 'debian' / name + '.sysusers'
+sysusers-src := 'data' / name + '.sysusers'
 sysusers-dst := lib-dir / 'sysusers.d' / name + '.conf'
 # tmpfiles.d
-tmpfiles-src := 'debian' / name + '.tmpfiles'
+tmpfiles-src := 'data' / name + '.tmpfiles'
 tmpfiles-dst := lib-dir / 'tmpfiles.d' / name + '.conf'
+
+# systemd units, greetd config and the PAM stack: upstream leaves these to the
+# distribution packaging, we ship them ourselves.
+unit-dir := lib-dir / 'systemd' / 'system'
+greeter-unit-src := 'data' / name + '.service'
+greeter-unit-dst := unit-dir / name + '.service'
+daemon-unit-src := 'data' / name + '-daemon.service'
+daemon-unit-dst := unit-dir / name + '-daemon.service'
+greetd-src := 'data' / name + '.toml'
+greetd-dst := etc-dir / 'greetd' / name + '.toml'
+pam-src := 'data' / name + '.pam'
+pam-dst := etc-dir / 'pam.d' / name
 
 daemon-src := cargo-target-dir / 'release' / name + '-daemon'
 daemon-dst := base-dir / 'bin' / name + '-daemon'
@@ -61,28 +77,32 @@ check-json: (check '--message-format=json')
 
 mock:
     cargo build --release --example server
-    cosmic-comp {{cargo-target-dir}}/release/examples/server
+    wmde-comp {{cargo-target-dir}}/release/examples/server
 
 # Run with debug logs
 run *args:
     env RUST_LOG=debug RUST_BACKTRACE=full cargo run --release {{args}}
 
-# Install only debian package required files
-# The sysusers and tmpfiles files are automatically added
-install-debian:
+# Installs the binaries and the D-Bus policy
+install-bin:
     install -Dm0755 {{bin-src}} {{bin-dst}}
     install -Dm0755 {{start-src}} {{start-dst}}
     install -Dm0755 {{daemon-src}} {{daemon-dst}}
-    install -Dm0755 {{dbus-src}} {{dbus-dst}}
+    install -Dm0644 {{dbus-src}} {{dbus-dst}}
 
 # Installs files
-install: install-debian
+install: install-bin
     install -Dm0644 {{sysusers-src}} {{sysusers-dst}}
     install -Dm0644 {{tmpfiles-src}} {{tmpfiles-dst}}
+    install -Dm0644 {{greeter-unit-src}} {{greeter-unit-dst}}
+    install -Dm0644 {{daemon-unit-src}} {{daemon-unit-dst}}
+    install -Dm0644 {{greetd-src}} {{greetd-dst}}
+    install -Dm0644 {{pam-src}} {{pam-dst}}
 
 # Uninstalls installed files
 uninstall:
-    rm {{start-dst}} {{bin-dst}} {{daemon-dst}} {{dbus-dst}} {{sysusers-dst}} {{tmpfiles-dst}}
+    rm {{start-dst}} {{bin-dst}} {{daemon-dst}} {{dbus-dst}} {{sysusers-dst}} {{tmpfiles-dst}} \
+       {{greeter-unit-dst}} {{daemon-unit-dst}} {{greetd-dst}} {{pam-dst}}
 
 # Vendor dependencies locally
 vendor:

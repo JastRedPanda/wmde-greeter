@@ -1,0 +1,11 @@
+[Unit]
+Description=WMDE Greeter Daemon
+
+[Service]
+Type=dbus
+BusName=fun.wmde.Greeter
+ExecStart=/usr/bin/wmde-greeter-daemon
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

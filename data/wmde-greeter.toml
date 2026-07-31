@@ -1,0 +1,9 @@
+[terminal]
+vt = "1"
+
+[general]
+service = "wmde-greeter"
+
+[default_session]
+command = "wmde-greeter-start"
+user = "wmde-greeter"

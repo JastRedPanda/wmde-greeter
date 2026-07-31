@@ -1,0 +1,3 @@
+# Home directory of wmde-greeter
+d	/var/lib/wmde-greeter	0750	wmde-greeter	wmde-greeter
+d	/run/wmde-greeter	    0755	wmde-greeter	wmde-greeter	-

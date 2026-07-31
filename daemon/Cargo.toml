@@ -1,9 +1,15 @@
 [package]
-name = "cosmic-greeter-daemon"
+name = "wmde-greeter-daemon"
 version = "0.1.0"
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# Package renamed so the binary is wmde-greeter-daemon; the library target keeps the
+# upstream name so `use cosmic_greeter_daemon::...` in src/ and daemon/src/main.rs stands.
+[lib]
+name = "cosmic_greeter_daemon"
+path = "src/lib.rs"
 
 [dependencies]
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

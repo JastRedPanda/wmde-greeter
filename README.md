@@ -1,5 +1,5 @@
-# cosmic-greeter
-libcosmic greeter for greetd, which can be run inside cosmic-comp
+# wmde-greeter
+libcosmic greeter for greetd, which can be run inside wmde-comp
 
 ## Development
 
@@ -22,8 +22,9 @@ This project uses [just](https://github.com/casey/just) as a command runner.
 - `just check-json` - Run clippy with JSON output format
 
 #### Installation
-- `just install` - Install all files (binary, daemon, D-Bus config, systemd files)
-- `just install-debian` - Install only Debian package required files
+- `just install` - Install everything: binaries, D-Bus policy, sysusers/tmpfiles, both
+  systemd units, the greetd config and the PAM stack
+- `just install-bin` - Install only the binaries and the D-Bus policy
 - `just uninstall` - Remove all installed files
 
 #### Cleanup
