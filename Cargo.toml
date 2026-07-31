@@ -215,11 +215,6 @@ cosmic-settings-a11y-manager-subscription = { path = "../wmde-settings/subscript
 [patch."https://github.com/pop-os/cosmic-randr"]
 cosmic-randr-shell = { path = "../wmde-randr/shell" }
 
-[patch."https://github.com/pop-os/cosmic-randr/"]
-cosmic-randr-shell = { path = "../wmde-randr/shell" }
-
-# Standard freedesktop/system service bindings - identical to pop-os, redirected for
-# source purity.
 [patch."https://github.com/pop-os/dbus-settings-bindings"]
 cosmic-dbus-a11y = { path = "../wmde-dbus-settings-bindings/a11y" }
 cosmic-dbus-networkmanager = { path = "../wmde-dbus-settings-bindings/networkmanager" }
