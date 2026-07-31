@@ -38,6 +38,11 @@ greetd-dst := etc-dir / 'greetd' / name + '.toml'
 pam-src := 'data' / name + '.pam'
 pam-dst := etc-dir / 'pam.d' / name
 
+# The picture behind both screens. Read at runtime by src/common.rs, so replacing this file
+# is all it takes to change the look - no rebuild.
+background-src := 'data' / 'background.jpg'
+background-dst := base-dir / 'share' / name / 'background.jpg'
+
 daemon-src := cargo-target-dir / 'release' / name + '-daemon'
 daemon-dst := base-dir / 'bin' / name + '-daemon'
 
@@ -83,26 +88,34 @@ mock:
 run *args:
     env RUST_LOG=debug RUST_BACKTRACE=full cargo run --release {{args}}
 
-# Installs the binaries and the D-Bus policy
-install-bin:
+# The two roles of this binary ship as two packages, so `just install` is split the same way.
+# See the PKGBUILD: a machine that only wants the screen locker must not be made to install
+# greetd and a display manager it will never enable.
+
+# The locker role: the binary, its PAM stack and the picture. This is what a WMDE session needs.
+install-locker:
     install -Dm0755 {{bin-src}} {{bin-dst}}
+    install -Dm0644 {{pam-src}} {{pam-dst}}
+    install -Dm0644 {{background-src}} {{background-dst}}
+
+# The greeter role: everything that only matters when this is the display manager.
+install-dm:
     install -Dm0755 {{start-src}} {{start-dst}}
     install -Dm0755 {{daemon-src}} {{daemon-dst}}
     install -Dm0644 {{dbus-src}} {{dbus-dst}}
-
-# Installs files
-install: install-bin
     install -Dm0644 {{sysusers-src}} {{sysusers-dst}}
     install -Dm0644 {{tmpfiles-src}} {{tmpfiles-dst}}
     install -Dm0644 {{greeter-unit-src}} {{greeter-unit-dst}}
     install -Dm0644 {{daemon-unit-src}} {{daemon-unit-dst}}
     install -Dm0644 {{greetd-src}} {{greetd-dst}}
-    install -Dm0644 {{pam-src}} {{pam-dst}}
+
+# Installs files
+install: install-locker install-dm
 
 # Uninstalls installed files
 uninstall:
     rm {{start-dst}} {{bin-dst}} {{daemon-dst}} {{dbus-dst}} {{sysusers-dst}} {{tmpfiles-dst}} \
-       {{greeter-unit-dst}} {{daemon-unit-dst}} {{greetd-dst}} {{pam-dst}}
+       {{greeter-unit-dst}} {{daemon-unit-dst}} {{greetd-dst}} {{pam-dst}} {{background-dst}}
 
 # Vendor dependencies locally
 vendor:

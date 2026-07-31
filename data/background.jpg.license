@@ -1,0 +1,21 @@
+data/background.jpg and res/background.jpg
+===========================================
+
+"City lights dot the Canadian landscape underneath an aurora"
+
+Author:  NASA Johnson Space Center (ISS Expedition 72, iss072e725406)
+Licence: Public domain - a work of the U.S. federal government, not
+         subject to copyright (17 U.S.C. 105)
+Source:  https://commons.wikimedia.org/wiki/File:City_lights_dot_the_Canadian_landscape_underneath_an_aurora_(iss072e725406).jpg
+
+Shipped copies are derived from the 8256x5504 original:
+
+  data/background.jpg  2560x1707, q88, EXIF stripped - installed to
+                       /usr/share/wmde-greeter/background.jpg and read at
+                       startup, so it can be replaced without rebuilding.
+  res/background.jpg   640x427, q80 - compiled into the binary by
+                       src/common.rs as the last-resort fallback for the
+                       case where the file above is missing.
+
+Replacing the picture needs nothing but a new file at the installed path;
+the licence of a replacement is the packager's responsibility.

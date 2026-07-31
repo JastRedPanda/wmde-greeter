@@ -194,22 +194,15 @@ impl UserData {
             }
         }
 
-        //TODO: fallback to background config if background state is not set?
-        match cosmic_bg_config::state::State::state() {
-            Ok(helper) => match cosmic_bg_config::state::State::get_entry(&helper) {
-                Ok(state) => {
-                    self.bg_state = state;
-                }
-                Err((errs, state)) => {
-                    tracing::error!("failed to load cosmic-bg state: {:?}", errs);
-                    self.bg_state = state;
-                }
-            },
-            Err(err) => {
-                tracing::error!("failed to create cosmic-bg state helper: {:?}", err);
-            }
-        }
-        self.load_wallpapers_as_user();
+        // WMDE: the login and lock screens show one fixed picture (see BACKGROUND_PATH in
+        // src/common.rs), so the user's wallpaper is never needed. Neither the state nor
+        // load_wallpapers_as_user() is called any more. That matters most in the greeter role:
+        // this runs inside run_as_user() in daemon/src/main.rs, i.e. the root daemon used to
+        // seteuid into every listed user, read megabytes of image files out of their home
+        // directories and ship the bytes over the system bus. Leaving bg_state empty makes
+        // Common::update_wallpapers find nothing, so both screens fall through to that picture.
+        //
+        // The loading code itself is left in place, unused, so upstream merges stay cheap.
 
         match cosmic_config::Config::new("fun.wmde.Comp", CosmicCompConfig::VERSION) {
             Ok(config_handler) => {

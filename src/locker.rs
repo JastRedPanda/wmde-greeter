@@ -267,7 +267,6 @@ pub enum Message {
     OutputEvent(OutputEvent, WlOutput),
     SessionLockEvent(SessionLockEvent),
     Channel(mpsc::Sender<String>),
-    BackgroundState(cosmic_bg_config::state::State),
     DropdownToggle(Dropdown),
     KeyboardLayout(usize),
     Inhibit(Arc<OwnedFd>),
@@ -1025,12 +1024,6 @@ impl cosmic::Application for App {
             Message::Channel(value_tx) => {
                 self.value_tx_opt = Some(value_tx);
             }
-            Message::BackgroundState(bg_state) => {
-                self.flags.user_data.bg_state = bg_state;
-                self.flags.user_data.load_wallpapers_as_user();
-                self.common.surface_images.clear();
-                self.common.update_wallpapers(&self.flags.user_data);
-            }
             Message::DropdownToggle(dropdown) => {
                 if self.dropdown_opt == Some(dropdown) {
                     self.dropdown_opt = None;
@@ -1187,20 +1180,8 @@ impl cosmic::Application for App {
 
         subscriptions.push(self.common.subscription().map(Message::from));
 
-        struct BackgroundSubscription;
-        subscriptions.push(
-            cosmic_config::config_state_subscription(
-                TypeId::of::<BackgroundSubscription>(),
-                cosmic_bg_config::NAME.into(),
-                cosmic_bg_config::state::State::version(),
-            )
-            .map(|res| {
-                if !res.errors.is_empty() {
-                    tracing::info!("errors loading background state: {:?}", res.errors);
-                }
-                Message::BackgroundState(res.config)
-            }),
-        );
+        // WMDE: no subscription to wmde-bg's state. The lock screen shows the fixed WMDE
+        // picture, so a wallpaper change mid-session is not something it has to follow.
 
         struct TimeAppletSubscription;
         subscriptions.push(

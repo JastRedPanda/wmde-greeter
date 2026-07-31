@@ -22,9 +22,13 @@ This project uses [just](https://github.com/casey/just) as a command runner.
 - `just check-json` - Run clippy with JSON output format
 
 #### Installation
-- `just install` - Install everything: binaries, D-Bus policy, sysusers/tmpfiles, both
-  systemd units, the greetd config and the PAM stack
-- `just install-bin` - Install only the binaries and the D-Bus policy
+The two roles of the binary install separately, matching the two packages the PKGBUILD builds.
+
+- `just install-locker` - the screen locker: the binary, its PAM stack and the background
+  picture. This is all a WMDE session needs.
+- `just install-dm` - the display manager on top: the daemon, the start script, the D-Bus
+  policy, sysusers/tmpfiles, both systemd units and the greetd config.
+- `just install` - both of the above
 - `just uninstall` - Remove all installed files
 
 #### Cleanup

@@ -21,6 +21,31 @@ use crate::keyboard_layout_wayland;
 
 pub const DEFAULT_MENU_ITEM_HEIGHT: f32 = 36.;
 
+/// Path of the picture behind the login screen and the lock screen.
+///
+/// WMDE shows one fixed picture on both screens instead of the wallpaper of whichever user is
+/// selected. That is what keeps this binary independent of wmde-bg: nothing has to read a
+/// user's background config, and in the greeter role nothing has to read files out of a
+/// stranger's home directory as root.
+const BACKGROUND_PATH: &str = "/usr/share/wmde-greeter/background.jpg";
+
+/// The picture is DATA, not code: it is read from disk at startup so it can be replaced without
+/// rebuilding the fork. The compiled-in copy is only the last resort for a broken install - it
+/// is deliberately a small, low-resolution version, since it should never be what anyone sees.
+fn background_image() -> widget::image::Handle {
+    match std::fs::read(BACKGROUND_PATH) {
+        Ok(bytes) => widget::image::Handle::from_bytes(bytes),
+        Err(err) => {
+            tracing::warn!(
+                "failed to read {}: {} - falling back to the built-in picture",
+                BACKGROUND_PATH,
+                err
+            );
+            widget::image::Handle::from_bytes(include_bytes!("../res/background.jpg").as_slice())
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ActiveLayout {
     pub layout: String,
@@ -105,9 +130,7 @@ impl<M: From<Message> + Send + 'static> Common<M> {
             caps_lock: false,
             core,
             error_opt: None,
-            fallback_background: widget::image::Handle::from_bytes(
-                include_bytes!("../res/background.jpg").as_slice(),
-            ),
+            fallback_background: background_image(),
             layouts_opt,
             network_icon_opt: None,
             on_output_event: None,
