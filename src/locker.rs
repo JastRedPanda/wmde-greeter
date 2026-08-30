@@ -1052,6 +1052,9 @@ impl cosmic::Application for App {
                 }
             }
             Message::Submit(value) => {
+                if value.is_empty() {
+                    return Task::none();
+                }
                 self.common.error_opt = None;
                 self.authenticating = true;
                 match self.value_tx_opt.take() {
