@@ -79,8 +79,6 @@ pub fn main(user: pwd::Passwd) -> Result<(), Box<dyn std::error::Error>> {
     // We are already the user at this point
     user_data.load_config_as_user();
 
-    let logind_available = cfg!(feature = "logind") && crate::logind::is_available();
-
     let flags = Flags {
         user_icon: user_data
             .icon_opt
@@ -88,7 +86,10 @@ pub fn main(user: pwd::Passwd) -> Result<(), Box<dyn std::error::Error>> {
             .map(widget::image::Handle::from_bytes),
         user_data,
         lockfile_opt: lockfile_opt(),
-        logind_available,
+        #[cfg(feature = "logind")]
+        logind_available: crate::logind::is_available(),
+        #[cfg(not(feature = "logind"))]
+        logind_available: false,
     };
 
     let settings = Settings::default().no_main_window(true);
@@ -708,6 +709,12 @@ impl cosmic::Application for App {
         match message {
             Message::None => {}
             Message::Common(common_message) => {
+                if matches!(&common_message, common::Message::Prompt(_, _, Some(_)))
+                    && self.authenticating
+                {
+                    self.authenticating = false;
+                    self.common.prompt_opt = None;
+                }
                 return self.common.update(common_message);
             }
             Message::OutputEvent(output_event, output) => {
@@ -1201,7 +1208,8 @@ impl cosmic::Application for App {
             }),
         );
 
-        if cfg!(feature = "logind") && self.flags.logind_available {
+        #[cfg(feature = "logind")]
+        if self.flags.logind_available {
             subscriptions.push(crate::logind::subscription());
         }
 
