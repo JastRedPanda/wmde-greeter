@@ -20,7 +20,9 @@ use wayland_client::{Connection, Proxy};
 
 use crate::keyboard_layout_wayland;
 
-pub const MAX_WIDTH: f32 = 866.;
+// WMDE: 800, as in 1.8. Upstream widened the card to 866 in ce726d8 to make room for the
+// on-screen keyboard button, which WMDE does not ship.
+pub const MAX_WIDTH: f32 = 800.;
 pub const DEFAULT_MENU_ITEM_HEIGHT: f32 = 36.;
 
 /// Path of the picture behind the login screen and the lock screen.
