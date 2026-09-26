@@ -801,7 +801,7 @@ impl cosmic::Application for App {
                             .unwrap_or((1920, 1080));
                         let (loc, sub_size) = if unwrapped_size.0 as f32 > MAX_WIDTH {
                             (
-                                Point::new(unwrapped_size.0 as f32 / 2. - 400., 32.),
+                                Point::new((unwrapped_size.0 as f32 - MAX_WIDTH) / 2., 32.),
                                 Size::new(MAX_WIDTH, unwrapped_size.1 as f32 - 32.),
                             )
                         } else {
@@ -882,7 +882,7 @@ impl cosmic::Application for App {
                             .unwrap_or((1920, 1080));
                         let (loc, sub_size) = if unwrapped_size.0 as f32 > MAX_WIDTH {
                             (
-                                Point::new(unwrapped_size.0 as f32 / 2. - 400., 32.),
+                                Point::new((unwrapped_size.0 as f32 - MAX_WIDTH) / 2., 32.),
                                 Size::new(MAX_WIDTH, unwrapped_size.1 as f32 - 32.),
                             )
                         } else {
