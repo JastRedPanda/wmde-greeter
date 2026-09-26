@@ -588,17 +588,27 @@ impl App {
             let mut input_button = widget::popover(
                 widget::container(
                     widget::button::custom(
-                        // WMDE: an empty layout list must not panic the login screen.
-                        widget::text(
-                            self.common
-                                .active_layouts
-                                .get(self.common.current_keyboard_layout)
-                                .map(common::ActiveLayout::name)
-                                .unwrap_or_default(),
-                        )
-                        .ellipsize(Ellipsize::End(EllipsizeHeightLimit::Lines(1)))
-                        .height(16)
-                        .center(),
+                        // WMDE: without a layout name - the default configuration selects no
+                        // layout, so the list is empty - show the keyboard icon the button
+                        // carried in 1.8 instead of an empty box. `.get()` keeps an empty list
+                        // from panicking the screen outright.
+                        match self
+                            .common
+                            .active_layouts
+                            .get(self.common.current_keyboard_layout)
+                            .map(common::ActiveLayout::name)
+                            .filter(|name| !name.is_empty())
+                        {
+                            Some(name) => Element::from(
+                                widget::text(name)
+                                    .ellipsize(Ellipsize::End(EllipsizeHeightLimit::Lines(1)))
+                                    .height(16)
+                                    .center(),
+                            ),
+                            None => {
+                                Element::from(widget::icon::from_name("input-keyboard-symbolic"))
+                            }
+                        },
                     )
                     .padding(12.0)
                     .on_press(Message::DropdownToggle(Dropdown::Keyboard)),
