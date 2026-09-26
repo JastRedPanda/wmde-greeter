@@ -1207,8 +1207,20 @@ impl cosmic::Application for App {
     }
 
     /// Creates a view after each update.
-    fn view_window(&self, _surface_id: SurfaceId) -> Element<'_, Self::Message> {
-        widget::space::horizontal().into()
+    fn view_window(&self, surface_id: SurfaceId) -> Element<'_, Self::Message> {
+        // WMDE: the lock surface draws the fixed picture itself. Upstream leaves it empty and
+        // relies on cosmic-bg showing through the lock, which wmde-comp never allows: its
+        // global for showing layers on the lock screen is advertised to nobody.
+        let img = self
+            .common
+            .surface_images
+            .get(&surface_id)
+            .unwrap_or(&self.common.fallback_background);
+        widget::image(img)
+            .content_fit(iced::ContentFit::Cover)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
