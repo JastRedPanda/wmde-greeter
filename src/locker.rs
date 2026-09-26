@@ -419,8 +419,14 @@ impl App {
             let mut input_button = widget::popover(
                 widget::container(
                     widget::button::custom(
+                        // WMDE: an empty layout list must not panic: a dead locker leaves the
+                        // session locked with nothing to type the password into.
                         widget::text(
-                            self.common.active_layouts[self.common.current_keyboard_layout].name(),
+                            self.common
+                                .active_layouts
+                                .get(self.common.current_keyboard_layout)
+                                .map(common::ActiveLayout::name)
+                                .unwrap_or_default(),
                         )
                         .ellipsize(Ellipsize::End(EllipsizeHeightLimit::Lines(1)))
                         .height(16)
