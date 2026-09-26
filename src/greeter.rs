@@ -23,6 +23,7 @@ use cosmic::iced::platform_specific::shell::wayland::commands::layer_surface::{
 };
 use cosmic::iced::platform_specific::shell::wayland::commands::subsurface::reposition_subsurface;
 use cosmic::iced::runtime::core::window::Id as SurfaceId;
+use cosmic::iced::runtime::platform_specific::wayland::CornerRadius;
 use cosmic::iced::runtime::platform_specific::wayland::subsurface::SctkSubsurfaceSettings;
 use cosmic::iced::{
     self, Alignment, Background, Border, Length, Point, Rectangle, Size, Subscription, window,
@@ -1311,7 +1312,15 @@ impl cosmic::Application for App {
                             cosmic::surface::surface_task(app_layer_shell(
                                 |_: &App| LiveSettings {
                                     padding: None,
-                                    corners: None,
+                                    // WMDE: None means the theme radius, which libcosmic
+                                    // gives every system layer surface. This one covers
+                                    // the whole output and must stay square.
+                                    corners: Some(CornerRadius {
+                                        top_left: 0,
+                                        top_right: 0,
+                                        bottom_right: 0,
+                                        bottom_left: 0,
+                                    }),
                                     blur: Some(false),
                                 },
                                 move |_: &mut App| {
