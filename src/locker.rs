@@ -454,13 +454,6 @@ impl App {
                 .on_press(Message::None),
                 */
                 widget::tooltip(
-                    widget::button::custom(widget::icon::from_name("input-keyboard-symbolic"))
-                        .padding(12.0)
-                        .on_press(Message::Common(common::Message::OnScreenKeyboard)),
-                    widget::text(fl!("on-screen-keyboard")),
-                    widget::tooltip::Position::Top,
-                ),
-                widget::tooltip(
                     input_button,
                     widget::text(fl!("keyboard-layout")),
                     widget::tooltip::Position::Top

@@ -42,7 +42,7 @@ use std::num::NonZeroU32;
 use std::process::Stdio;
 use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
-use std::{fs, io, process, thread};
+use std::{fs, io, process};
 use tokio::process::Child;
 use tokio::time;
 use tracing::metadata::LevelFilter;
@@ -280,22 +280,6 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         }
         sessions
     };
-
-    match process::Command::new("cosmic-osk")
-        .arg("overlay")
-        .env("RUST_LOG", "cosmic_osk=info")
-        .spawn()
-    {
-        Ok(mut child) => {
-            thread::spawn(move || match child.wait() {
-                Ok(status) => tracing::warn!("cosmic-osk exited: {}", status),
-                Err(err) => tracing::error!("failed to wait on cosmic-osk: {}", err),
-            });
-        }
-        Err(err) => {
-            tracing::error!("failed to spawn cosmic-osk: {}", err);
-        }
-    }
 
     let flags = Flags {
         user_icons: user_datas
@@ -728,13 +712,6 @@ impl App {
                     accessibility_button,
                     text(fl!("accessibility")),
                     widget::tooltip::Position::Top
-                ),
-                widget::tooltip(
-                    widget::button::custom(widget::icon::from_name("input-keyboard-symbolic"))
-                        .padding(12.0)
-                        .on_press(Message::Common(common::Message::OnScreenKeyboard)),
-                    text(fl!("on-screen-keyboard")),
-                    widget::tooltip::Position::Top,
                 ),
                 widget::tooltip(
                     input_button,
