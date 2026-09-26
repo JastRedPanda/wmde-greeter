@@ -4,16 +4,18 @@
 use color_eyre::eyre::WrapErr;
 use cosmic::app::{Core, Settings, Task};
 use cosmic::cctk::wayland_protocols::xdg::shell::client::xdg_positioner::Gravity;
+use cosmic::iced::core::text::{Ellipsize, EllipsizeHeightLimit};
 use cosmic::iced::event::wayland::{OutputEvent, SessionLockEvent};
 use cosmic::iced::futures::{self, SinkExt};
 use cosmic::iced::platform_specific::shell::wayland::commands::session_lock::{
-    destroy_lock_surface, get_lock_surface, lock, unlock,
+    destroy_lock_surface, lock, unlock,
 };
 use cosmic::iced::runtime::core::window::Id as SurfaceId;
 use cosmic::iced::runtime::platform_specific::wayland::subsurface::SctkSubsurfaceSettings;
 use cosmic::iced::{
     self, Alignment, Background, Border, Length, Point, Rectangle, Size, Subscription,
 };
+use cosmic::surface::action::LiveSettings;
 use cosmic::{Element, executor, surface, theme, widget};
 use cosmic_config::CosmicConfigEntry;
 use cosmic_greeter_daemon::{TimeAppletConfig, UserData};
@@ -33,7 +35,7 @@ use tracing_subscriber::{EnvFilter, fmt};
 use wayland_client::Proxy;
 use wayland_client::protocol::wl_output::WlOutput;
 
-use crate::common::{self, Common, DEFAULT_MENU_ITEM_HEIGHT};
+use crate::common::{self, Common, DEFAULT_MENU_ITEM_HEIGHT, MAX_WIDTH};
 use crate::fl;
 
 fn lockfile_opt() -> Option<PathBuf> {
@@ -272,7 +274,7 @@ pub enum Message {
     KeyboardLayout(usize),
     Inhibit(Arc<OwnedFd>),
     Submit(String),
-    Surface(surface::Action),
+    Surface(surface::Action<Message>),
     Suspend,
     TimeAppletConfig(TimeAppletConfig),
     Error(String),
@@ -324,9 +326,9 @@ impl App {
             .window_size
             .get(&surface_id)
             .map(|s| s.width)
-            .unwrap_or(800.);
-        let menu_width = if window_width > 800. {
-            800.
+            .unwrap_or(MAX_WIDTH);
+        let menu_width = if window_width > MAX_WIDTH {
+            MAX_WIDTH
         } else {
             window_width
         };
@@ -415,9 +417,19 @@ impl App {
             };
 
             let mut input_button = widget::popover(
-                widget::button::custom(widget::icon::from_name("input-keyboard-symbolic"))
+                widget::container(
+                    widget::button::custom(
+                        widget::text(
+                            self.common.active_layouts[self.common.current_keyboard_layout].name(),
+                        )
+                        .ellipsize(Ellipsize::End(EllipsizeHeightLimit::Lines(1)))
+                        .height(16)
+                        .center(),
+                    )
                     .padding(12.0)
                     .on_press(Message::DropdownToggle(Dropdown::Keyboard)),
+                )
+                .max_width(80),
             )
             .position(widget::popover::Position::Bottom);
             if matches!(self.dropdown_opt, Some(Dropdown::Keyboard)) {
@@ -441,6 +453,13 @@ impl App {
                 .padding(12.0)
                 .on_press(Message::None),
                 */
+                widget::tooltip(
+                    widget::button::custom(widget::icon::from_name("input-keyboard-symbolic"))
+                        .padding(12.0)
+                        .on_press(Message::Common(common::Message::OnScreenKeyboard)),
+                    widget::text(fl!("on-screen-keyboard")),
+                    widget::tooltip::Position::Top,
+                ),
                 widget::tooltip(
                     input_button,
                     widget::text(fl!("keyboard-layout")),
@@ -662,6 +681,7 @@ impl cosmic::Application for App {
     /// Creates the application, and optionally emits command on initialize.
     fn init(mut core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
         core.set_app_type(cosmic::core::AppType::System);
+
         let (mut common, common_task) = Common::init(core);
         common.on_output_event = Some(Box::new(|output_event, output| {
             Message::OutputEvent(output_event, output)
@@ -780,10 +800,10 @@ impl cosmic::Application for App {
                         let unwrapped_size = size
                             .map(|s| (s.0.unwrap_or(1920), s.1.unwrap_or(1080)))
                             .unwrap_or((1920, 1080));
-                        let (loc, sub_size) = if unwrapped_size.0 > 800 {
+                        let (loc, sub_size) = if unwrapped_size.0 as f32 > MAX_WIDTH {
                             (
                                 Point::new(unwrapped_size.0 as f32 / 2. - 400., 32.),
-                                Size::new(800., unwrapped_size.1 as f32 - 32.),
+                                Size::new(MAX_WIDTH, unwrapped_size.1 as f32 - 32.),
                             )
                         } else {
                             (
@@ -818,11 +838,19 @@ impl cosmic::Application for App {
                         );
 
                         if matches!(self.state, State::Locked { .. }) {
-                            return get_lock_surface(surface_id, output).chain({
-                                cosmic::task::message(cosmic::Action::Cosmic(
-                                    cosmic::app::Action::Surface(msg),
-                                ))
-                            });
+                            return cosmic::task::message(cosmic::Action::Surface(
+                                cosmic::surface::action::lock(
+                                    || LiveSettings {
+                                        padding: None,
+                                        corners: None,
+                                        blur: Some(false),
+                                    },
+                                    surface_id,
+                                    output,
+                                    None::<fn() -> cosmic::Element<'static, cosmic::Action<Message>>>,
+                                ),
+                            ))
+                            .chain(cosmic::task::message(cosmic::Action::Surface(msg)));
                         }
                     }
                     OutputEvent::Removed => {
@@ -853,10 +881,10 @@ impl cosmic::Application for App {
                         let unwrapped_size = size
                             .map(|s| (s.0.unwrap_or(1920), s.1.unwrap_or(1080)))
                             .unwrap_or((1920, 1080));
-                        let (loc, sub_size) = if unwrapped_size.0 > 800 {
+                        let (loc, sub_size) = if unwrapped_size.0 as f32 > MAX_WIDTH {
                             (
                                 Point::new(unwrapped_size.0 as f32 / 2. - 400., 32.),
-                                Size::new(800., unwrapped_size.1 as f32 - 32.),
+                                Size::new(MAX_WIDTH, unwrapped_size.1 as f32 - 32.),
                             )
                         } else {
                             (Point::ORIGIN, Size::new(1920., 1080.))
@@ -962,7 +990,18 @@ impl cosmic::Application for App {
 
                     // Create lock surfaces
                     for (output, surface_id) in self.common.surface_ids.iter() {
-                        commands.push(get_lock_surface(*surface_id, output.clone()));
+                        commands.push(cosmic::task::message(cosmic::Action::Surface(
+                            cosmic::surface::action::lock(
+                                || LiveSettings {
+                                    padding: None,
+                                    corners: None,
+                                    blur: Some(false),
+                                },
+                                *surface_id,
+                                output.clone(),
+                                None::<fn() -> cosmic::Element<'static, cosmic::Action<Message>>>,
+                            ),
+                        )));
 
                         if let Some((rect, name)) = self
                             .common
@@ -997,9 +1036,7 @@ impl cosmic::Application for App {
                                     app.menu(subsurface_id).map(cosmic::Action::App)
                                 })),
                             );
-                            commands.push(cosmic::task::message(cosmic::Action::Cosmic(
-                                cosmic::app::Action::Surface(msg),
-                            )));
+                            commands.push(cosmic::task::message(cosmic::Action::Surface(msg)));
                         } else {
                             tracing::error!("no rectangle for subsurface creation...");
                         }
@@ -1158,9 +1195,7 @@ impl cosmic::Application for App {
                 }
             }
             Message::Surface(a) => {
-                return cosmic::task::message(cosmic::Action::Cosmic(
-                    cosmic::app::Action::Surface(a),
-                ));
+                return cosmic::task::message(cosmic::Action::Surface(a));
             }
         }
         Task::none()
@@ -1172,17 +1207,8 @@ impl cosmic::Application for App {
     }
 
     /// Creates a view after each update.
-    fn view_window(&self, surface_id: SurfaceId) -> Element<'_, Self::Message> {
-        let img = self
-            .common
-            .surface_images
-            .get(&surface_id)
-            .unwrap_or(&self.common.fallback_background);
-        widget::image(img)
-            .content_fit(iced::ContentFit::Cover)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+    fn view_window(&self, _surface_id: SurfaceId) -> Element<'_, Self::Message> {
+        widget::space::horizontal().into()
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {

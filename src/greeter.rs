@@ -11,6 +11,7 @@ use cosmic::cctk::wayland_protocols::xdg::shell::client::xdg_positioner::Gravity
 use cosmic::cosmic_config::{self, ConfigSet};
 use cosmic::cosmic_theme::{self, CosmicPalette};
 use cosmic::desktop::fde::{DesktopEntry, get_languages_from_env};
+use cosmic::iced::core::text::{Ellipsize, EllipsizeHeightLimit};
 use cosmic::iced::event::listen_with;
 use cosmic::iced::event::wayland::OutputEvent;
 use cosmic::iced::futures::SinkExt;
@@ -18,7 +19,7 @@ use cosmic::iced::platform_specific::runtime::wayland::layer_surface::{
     IcedMargin, IcedOutput, SctkLayerSurfaceSettings,
 };
 use cosmic::iced::platform_specific::shell::wayland::commands::layer_surface::{
-    Anchor, KeyboardInteractivity, Layer, destroy_layer_surface, get_layer_surface,
+    Anchor, KeyboardInteractivity, Layer, destroy_layer_surface,
 };
 use cosmic::iced::platform_specific::shell::wayland::commands::subsurface::reposition_subsurface;
 use cosmic::iced::runtime::core::window::Id as SurfaceId;
@@ -26,6 +27,7 @@ use cosmic::iced::runtime::platform_specific::wayland::subsurface::SctkSubsurfac
 use cosmic::iced::{
     self, Alignment, Background, Border, Length, Point, Rectangle, Size, Subscription, window,
 };
+use cosmic::surface::action::{LiveSettings, app_layer_shell};
 use cosmic::widget::{id_container, text};
 use cosmic::{Element, executor, surface, theme, widget};
 use cosmic_greeter_config::Config as CosmicGreeterConfig;
@@ -40,7 +42,7 @@ use std::num::NonZeroU32;
 use std::process::Stdio;
 use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
-use std::{fs, io, process};
+use std::{fs, io, process, thread};
 use tokio::process::Child;
 use tokio::time;
 use tracing::metadata::LevelFilter;
@@ -51,7 +53,7 @@ use wayland_client::Proxy;
 use wayland_client::protocol::wl_output::WlOutput;
 use zbus::{Connection, proxy};
 
-use crate::common::{self, Common, DEFAULT_MENU_ITEM_HEIGHT};
+use crate::common::{self, Common, DEFAULT_MENU_ITEM_HEIGHT, MAX_WIDTH};
 use crate::fl;
 
 static USERNAME_ID: LazyLock<iced::id::Id> = LazyLock::new(|| iced::id::Id::new("username-id"));
@@ -76,8 +78,8 @@ async fn user_data_dbus() -> Result<Vec<UserData>, Box<dyn Error>> {
     Ok(user_datas)
 }
 
-fn user_data_fallback() -> Vec<UserData> {
-    let user_filter = UserFilter::new();
+async fn user_data_fallback() -> Vec<UserData> {
+    let user_filter = UserFilter::new().await;
 
     // The pwd::Passwd method is unsafe (but not labelled as such) due to using global state (libc pwent functions).
     /* unsafe */
@@ -129,7 +131,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         Ok(ok) => ok,
         Err(err) => {
             tracing::error!("failed to load user data from daemon: {}", err);
-            user_data_fallback()
+            runtime.block_on(user_data_fallback())
         }
     };
 
@@ -279,6 +281,22 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         sessions
     };
 
+    match process::Command::new("cosmic-osk")
+        .arg("overlay")
+        .env("RUST_LOG", "cosmic_osk=info")
+        .spawn()
+    {
+        Ok(mut child) => {
+            thread::spawn(move || match child.wait() {
+                Ok(status) => tracing::warn!("cosmic-osk exited: {}", status),
+                Err(err) => tracing::error!("failed to wait on cosmic-osk: {}", err),
+            });
+        }
+        Err(err) => {
+            tracing::error!("failed to spawn cosmic-osk: {}", err);
+        }
+    }
+
     let flags = Flags {
         user_icons: user_datas
             .iter_mut()
@@ -389,7 +407,7 @@ pub enum Message {
     Session(String),
     Shutdown,
     Socket(SocketState),
-    Surface(surface::Action),
+    Surface(surface::Action<Message>),
     Suspend,
     Username(String),
     EnterUser(bool, String),
@@ -481,9 +499,9 @@ impl App {
             .window_size
             .get(&id)
             .map(|s| s.width)
-            .unwrap_or(800.);
-        let menu_width = if window_width > 800. {
-            800.
+            .unwrap_or(MAX_WIDTH);
+        let menu_width = if window_width > MAX_WIDTH {
+            MAX_WIDTH
         } else {
             window_width
         };
@@ -583,9 +601,19 @@ impl App {
             };
 
             let mut input_button = widget::popover(
-                widget::button::custom(widget::icon::from_name("input-keyboard-symbolic"))
+                widget::container(
+                    widget::button::custom(
+                        widget::text(
+                            self.common.active_layouts[self.common.current_keyboard_layout].name(),
+                        )
+                        .ellipsize(Ellipsize::End(EllipsizeHeightLimit::Lines(1)))
+                        .height(16)
+                        .center(),
+                    )
                     .padding(12.0)
                     .on_press(Message::DropdownToggle(Dropdown::Keyboard)),
+                )
+                .max_width(80),
             )
             .position(widget::popover::Position::Bottom);
             if matches!(self.dropdown_opt, Some(Dropdown::Keyboard)) {
@@ -700,6 +728,13 @@ impl App {
                     accessibility_button,
                     text(fl!("accessibility")),
                     widget::tooltip::Position::Top
+                ),
+                widget::tooltip(
+                    widget::button::custom(widget::icon::from_name("input-keyboard-symbolic"))
+                        .padding(12.0)
+                        .on_press(Message::Common(common::Message::OnScreenKeyboard)),
+                    text(fl!("on-screen-keyboard")),
+                    widget::tooltip::Position::Top,
                 ),
                 widget::tooltip(
                     input_button,
@@ -964,7 +999,7 @@ impl App {
                 appearance
             },
         )))
-        .width(Length::Fixed(800.0));
+        .width(Length::Fixed(MAX_WIDTH));
         let menu = if let Some(t) = self.common.rectangle_tracker.as_ref() {
             Element::from(t.container((id, false), menu))
         } else {
@@ -1252,10 +1287,10 @@ impl cosmic::Application for App {
                         let unwrapped_size = size
                             .map(|s| (s.0.unwrap_or(1920), s.1.unwrap_or(1080)))
                             .unwrap_or((1920, 1080));
-                        let (loc, sub_size) = if unwrapped_size.0 > 800 {
+                        let (loc, sub_size) = if unwrapped_size.0 as f32 > MAX_WIDTH {
                             (
-                                Point::new(unwrapped_size.0 as f32 / 2. - 400., 32.),
-                                Size::new(800., unwrapped_size.1 as f32 - 32.),
+                                Point::new((unwrapped_size.0 as f32 - MAX_WIDTH) / 2., 32.),
+                                Size::new(MAX_WIDTH, unwrapped_size.1 as f32 - 32.),
                             )
                         } else {
                             (
@@ -1291,27 +1326,41 @@ impl cosmic::Application for App {
                         );
                         return Task::batch([
                             self.update_user_data(),
-                            get_layer_surface(SctkLayerSurfaceSettings {
-                                id: surface_id,
-                                layer: Layer::Overlay,
-                                keyboard_interactivity: KeyboardInteractivity::Exclusive,
-                                input_zone: None,
-                                anchor: Anchor::TOP | Anchor::LEFT | Anchor::BOTTOM | Anchor::RIGHT,
-                                output: IcedOutput::Output(output),
-                                namespace: "cosmic-locker".into(),
-                                size: Some((None, None)),
-                                margin: IcedMargin {
-                                    top: 0,
-                                    bottom: 0,
-                                    left: 0,
-                                    right: 0,
+                            cosmic::surface::surface_task(app_layer_shell(
+                                |_: &App| LiveSettings {
+                                    padding: None,
+                                    corners: None,
+                                    blur: Some(false),
                                 },
-                                exclusive_zone: -1,
-                                size_limits: iced::Limits::NONE.min_width(1.0).min_height(1.0),
-                            }),
-                            cosmic::task::message(cosmic::Action::Cosmic(
-                                cosmic::app::Action::Surface(msg),
+                                move |_: &mut App| {
+                                    let output = output.clone();
+                                    SctkLayerSurfaceSettings {
+                                        id: surface_id,
+                                        layer: Layer::Top,
+                                        keyboard_interactivity: KeyboardInteractivity::Exclusive,
+                                        input_zone: None,
+                                        anchor: Anchor::TOP
+                                            | Anchor::LEFT
+                                            | Anchor::BOTTOM
+                                            | Anchor::RIGHT,
+                                        output: IcedOutput::Output(output),
+                                        namespace: "cosmic-greeter".into(),
+                                        size: Some((None, None)),
+                                        margin: IcedMargin {
+                                            top: 0,
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                        },
+                                        exclusive_zone: -1,
+                                        size_limits: iced::Limits::NONE
+                                            .min_width(1.0)
+                                            .min_height(1.0),
+                                    }
+                                },
+                                None,
                             )),
+                            cosmic::task::message(cosmic::Action::Surface(msg)),
                         ]);
                     }
                     OutputEvent::Removed => {
@@ -1659,9 +1708,7 @@ impl cosmic::Application for App {
                 self.greetd_sender = Some(sender);
             }
             Message::Surface(a) => {
-                return cosmic::task::message(cosmic::Action::Cosmic(
-                    cosmic::app::Action::Surface(a),
-                ));
+                return cosmic::task::message(cosmic::Action::Surface(a));
             }
             Message::ScreenReader(enabled) => {
                 if enabled
@@ -1859,8 +1906,8 @@ impl cosmic::Application for App {
                     tracing::error!("Failed to find subsurface menu id");
                     return Task::none();
                 };
-                let loc = if size.width > 800. {
-                    Point::new(size.width / 2. - 400., 32.)
+                let loc = if size.width > MAX_WIDTH {
+                    Point::new((size.width - MAX_WIDTH) / 2., 32.)
                 } else {
                     Point::new(0., 32.)
                 };
