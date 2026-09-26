@@ -447,9 +447,9 @@ struct Accessibility {
 }
 
 impl App {
-    /// Applies a display configuration via `cosmic-randr`.
+    /// Applies a display configuration via `wmde-randr`.
     fn exec_randr(&self, user_config: cosmic_randr_shell::List) -> Task<Message> {
-        let mut task = tokio::process::Command::new("cosmic-randr");
+        let mut task = tokio::process::Command::new("wmde-randr");
         task.arg("kdl");
 
         cosmic::task::future::<(), ()>(async move {
