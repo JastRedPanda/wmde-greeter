@@ -421,13 +421,12 @@ impl App {
                     widget::button::custom(
                         // WMDE: without a layout name - the default configuration selects no
                         // layout, so the list is empty - show the keyboard icon the button
-                        // carried in 1.8 instead of an empty box. `.get()` keeps an empty list
-                        // from panicking the screen outright.
+                        // carried in 1.8 instead of an empty box.
                         match self
                             .common
                             .active_layouts
                             .get(self.common.current_keyboard_layout)
-                            .map(common::ActiveLayout::name)
+                            .map(|x| x.name())
                             .filter(|name| !name.is_empty())
                         {
                             Some(name) => Element::from(
