@@ -1,8 +1,10 @@
 [Unit]
 Description=WMDE Greeter
 After=systemd-user-sessions.service plymouth-quit-wait.service wmde-greeter-daemon.service
-After=getty@tty1.service
-Conflicts=getty@tty1.service
+# greetd holds VT1, and so does a kmscon console on tty1 (upstream 1.10; Arch names the unit
+# kmsconvt@, not upstream's kmscon@).
+After=getty@tty1.service kmsconvt@tty1.service
+Conflicts=getty@tty1.service kmsconvt@tty1.service
 Wants=wmde-greeter-daemon.service
 
 [Service]
