@@ -1706,7 +1706,14 @@ impl cosmic::Application for App {
                     }
                     commands.push(destroy_layer_surface(surface_id));
                 }
-                commands.push(Task::perform(async { process::exit(0) }, |x| x));
+                // WMDE: under a greetd that hands the screen over (`GREETD_HANDOVER`,
+                // wmde-greetd with session_vt = next) the session comes up on a VT of its
+                // own while this compositor keeps the screen, now showing only the
+                // background, and greetd ends us once it has switched. Exiting here
+                // would blank the screen before the session is there.
+                if std::env::var_os("GREETD_HANDOVER").is_none() {
+                    commands.push(Task::perform(async { process::exit(0) }, |x| x));
+                }
                 return Task::batch(commands);
             }
             Message::GreetdChannel(sender) => {

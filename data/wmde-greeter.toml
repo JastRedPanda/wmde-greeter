@@ -1,5 +1,10 @@
 [terminal]
 vt = "1"
+# wmde-greetd: the session starts on a VT of its own while the greeter keeps the screen,
+# and greetd switches over once the session's compositor has taken its VT. The greeter's
+# last frame (the background) stays up through the switch, so no console shows between
+# the login screen and the desktop. Stock greetd does not know the key.
+session_vt = "next"
 
 [general]
 service = "wmde-greeter"

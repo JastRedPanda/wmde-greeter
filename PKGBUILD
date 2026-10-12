@@ -65,7 +65,8 @@ package_wmde-greeter() {
 package_wmde-greeter-dm() {
   pkgdesc="WMDE greeter for greetd - owns fun.wmde.Greeter"
   # wmde-greeter-start execs `wmde-comp wmde-greeter`, greetd drives the whole thing.
-  depends=("wmde-greeter=$pkgver-$pkgrel" 'glibc' 'gcc-libs' 'greetd' 'wmde-comp'
+  # wmde-greetd, not Arch's greetd: wmde-greeter.toml sets session_vt, which only it has.
+  depends=("wmde-greeter=$pkgver-$pkgrel" 'glibc' 'gcc-libs' 'wmde-greetd' 'wmde-comp'
            'wmde-icons-base')
   optdepends=('wmde-randr: remember per-output layout at the greeter'
               'networkmanager: network status on the greeter'
